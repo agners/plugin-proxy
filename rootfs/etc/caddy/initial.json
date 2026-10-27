@@ -1,0 +1,15 @@
+{
+  "admin": {
+    "listen": "unix//run/supervisor/proxy/proxy.sock|0600",
+    "origins": ["localhost"]
+  },
+  "logging": {
+    "logs": {
+      "default": {
+        "writer": {"output": "stderr"},
+        "encoder": {"format": "console"},
+        "level": "INFO"
+      }
+    }
+  }
+}

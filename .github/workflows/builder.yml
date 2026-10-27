@@ -1,0 +1,127 @@
+name: Build plugin
+
+on:
+  pull_request:
+    branches: ["main"]
+  release:
+    types: ["published"]
+  push:
+    branches: ["main"]
+    paths:
+    - Dockerfile
+    - 'rootfs/**'
+    - 'caddy/**'
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  BUILD_NAME: proxy
+  BUILD_TYPE: plugin
+  IMAGE_NAME: hassio-proxy
+
+permissions:
+  contents: read
+
+jobs:
+  init:
+    name: Initialize build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      publish: ${{ steps.version.outputs.publish }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: version
+      uses: home-assistant/actions/helpers/version@master
+      with:
+        type: ${{ env.BUILD_TYPE }}
+
+    - name: Get build matrix
+      id: matrix
+      uses: home-assistant/builder/actions/prepare-multi-arch-matrix@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+      with:
+        architectures: ${{ env.ARCHITECTURES }}
+        image-name: ${{ env.IMAGE_NAME }}
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs: init
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        id: build
+        uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
+          cosign-base-verify: ghcr.io/home-assistant/base:3.24
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          push: ${{ needs.init.outputs.publish == 'true' }}
+          version: ${{ needs.init.outputs.version }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [init, build]
+    if: needs.init.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+
+  version:
+    name: Update version
+    if: github.repository_owner == 'home-assistant'
+    needs: [init, build, manifest]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      if: needs.init.outputs.publish == 'true'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Initialize git
+      if: needs.init.outputs.publish == 'true'
+      uses: home-assistant/actions/helpers/git-init@master
+      with:
+        name: ${{ secrets.GIT_NAME }}
+        email: ${{ secrets.GIT_EMAIL }}
+        token: ${{ secrets.GIT_TOKEN }}
+
+    - name: Update version file
+      if: needs.init.outputs.publish == 'true'
+      uses: home-assistant/actions/helpers/version-push@master
+      with:
+        key: ${{ env.BUILD_NAME }}
+        version: ${{ needs.init.outputs.version }}
+        channel: ${{ needs.init.outputs.channel }}

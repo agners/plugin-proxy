@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start Caddy
+#
+# The initial config only opens the admin socket; Home Assistant Core pushes
+# the listener configuration over it. --resume restores the last pushed
+# config from /data so the proxy serves again right after a restart, before
+# Core is back.
+# ==============================================================================
+exec caddy run --config /etc/caddy/initial.json --resume
