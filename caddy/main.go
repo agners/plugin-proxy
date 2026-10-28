@@ -17,7 +17,6 @@ import (
 	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/encode/zstd"
 	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/headers"
 	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy"
-	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/staticresp"
 	_ "github.com/caddyserver/caddy/v2/modules/caddytls"
 	_ "github.com/caddyserver/caddy/v2/modules/caddytls/standardstek"
 	_ "github.com/caddyserver/caddy/v2/modules/filestorage"
