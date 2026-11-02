@@ -7,4 +7,9 @@
 # config from /data so the proxy serves again right after a restart, before
 # Core is back.
 # ==============================================================================
+# Go disables RFC 8441 extended CONNECT by default; with it browsers run
+# WebSockets over HTTP/2 and HTTP/3 and Caddy upgrades them to HTTP/1.1
+# toward Core.
+export GODEBUG=http2xconnect=1
+
 exec caddy run --config /etc/caddy/initial.json --resume
