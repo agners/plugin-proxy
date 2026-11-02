@@ -23,8 +23,14 @@ keeps serving while Core is still starting.
 ## Building
 
 ```sh
-docker buildx build --platform linux/amd64 -t hassio-proxy:dev .
+docker buildx build --platform linux/amd64 \
+  --label io.hass.version=2026.11.0 \
+  -t ghcr.io/home-assistant/amd64-hassio-proxy:2026.11.0 .
 ```
+
+The Supervisor reads the installed version from the `io.hass.version` label
+and expects an image tag with that version. CI sets the label; a local build
+must pass it, otherwise the label of the base image is inherited.
 
 The Caddy binary is built from `caddy/main.go` with only the modules the
 plugin needs; see the imports there to add one.
