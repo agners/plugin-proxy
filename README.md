@@ -14,7 +14,10 @@ its HTTP settings and pushes it to Caddy's admin API over a Unix socket.
 | Socket (inside the container) | Who listens | Who connects |
 |---|---|---|
 | `/run/supervisor/proxy/proxy.sock` | Caddy admin API | Core |
-| `/run/supervisor/core/core.sock` | Core | Caddy (reverse proxy upstream) |
+| `/run/supervisor/core/plugins/proxy/core.sock` | Core | Caddy (reverse proxy upstream) |
+
+The upstream socket is private to the proxy. It is not the Core socket the
+Supervisor uses, which authenticates its caller as the Supervisor.
 
 Caddy starts from `/etc/caddy/initial.json`, which only opens the admin
 socket, and resumes the last pushed config from `/data` on restart so it
