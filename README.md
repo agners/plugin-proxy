@@ -20,8 +20,12 @@ The upstream socket is private to the proxy. It is not the Core socket the
 Supervisor uses, which authenticates its caller as the Supervisor.
 
 Caddy starts from `/etc/caddy/initial.json`, which only opens the admin
-socket, and resumes the last pushed config from `/data` on restart so it
-keeps serving while Core is still starting.
+socket, then loads the last pushed config autosaved in `/data` through that
+socket, so it keeps serving while Core is still starting. The load goes
+through the admin API rather than `--resume` so that a config whose ports
+are taken, because Core fell back to serving directly while the proxy was
+down, leaves Caddy running with its admin socket. Core polls that socket
+while serving directly and hands the ports back once it answers.
 
 ## Building
 

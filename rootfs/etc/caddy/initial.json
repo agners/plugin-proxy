@@ -1,7 +1,8 @@
 {
   "admin": {
     "listen": "unix//run/supervisor/proxy/proxy.sock|0600",
-    "origins": ["localhost"]
+    "origins": ["localhost"],
+    "config": {"persist": false}
   },
   "logging": {
     "logs": {

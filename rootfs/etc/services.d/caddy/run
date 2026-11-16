@@ -3,13 +3,38 @@
 # Start Caddy
 #
 # The initial config only opens the admin socket; Home Assistant Core pushes
-# the listener configuration over it. --resume restores the last pushed
-# config from /data so the proxy serves again right after a restart, before
-# Core is back.
+# the listener configuration over it. The last pushed config is autosaved in
+# /data and loaded again after the start, so the proxy serves again right
+# after a restart, before Core is back.
+#
+# It is loaded through the admin API instead of --resume on purpose: if the
+# ports are taken, because Core fell back to serving directly while the
+# proxy was down, the load fails but Caddy stays up with its admin socket.
+# Core retries over that socket and hands the ports back. With --resume the
+# bind failure would end Caddy, leaving a restart loop that Core cannot
+# break into.
 # ==============================================================================
+declare -r admin_socket="/run/supervisor/proxy/proxy.sock"
+declare -r autosave="/data/caddy/autosave.json"
+
 # Go disables RFC 8441 extended CONNECT by default; with it browsers run
 # WebSockets over HTTP/2 and HTTP/3 and Caddy upgrades them to HTTP/1.1
 # toward Core.
 export GODEBUG=http2xconnect=1
 
-exec caddy run --config /etc/caddy/initial.json --resume
+if [[ -f "${autosave}" ]]; then
+    (
+        for _ in $(seq 1 100); do
+            [[ -S "${admin_socket}" ]] && break
+            sleep 0.1
+        done
+        if caddy reload --config "${autosave}" --address "unix/${admin_socket}"; then
+            bashio::log.info "Resumed the last pushed configuration"
+        else
+            bashio::log.warning \
+                "Could not resume the last pushed configuration, waiting for Home Assistant Core"
+        fi
+    ) &
+fi
+
+exec caddy run --config /etc/caddy/initial.json
